@@ -124,8 +124,7 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
        enet_list_clear (& currentPeer -> acknowledgements);
        enet_list_clear (& currentPeer -> sentReliableCommands);
        enet_list_clear (& currentPeer -> sentUnreliableCommands);
-       enet_list_clear (& currentPeer -> outgoingReliableCommands);
-       enet_list_clear (& currentPeer -> outgoingUnreliableCommands);
+       enet_list_clear (& currentPeer -> outgoingCommands);
        enet_list_clear (& currentPeer -> dispatchedCommands);
 
        enet_peer_reset (currentPeer);
@@ -159,6 +158,16 @@ enet_host_destroy (ENetHost * host)
 
     enet_free (host -> peers);
     enet_free (host);
+}
+
+enet_uint32
+enet_host_random (ENetHost * host)
+{
+    /* Mulberry32 by Tommy Ettinger */
+    enet_uint32 n = (host -> randomSeed += 0x6D2B79F5U);
+    n = (n ^ (n >> 15)) * (n | 1U);
+    n ^= n + (n ^ (n >> 7)) * (n | 61U);
+    return n ^ (n >> 14);
 }
 
 /** Initiates a connection to a foreign host.
@@ -200,7 +209,7 @@ enet_host_connect (ENetHost * host, const ENetAddress * address, size_t channelC
     currentPeer -> channelCount = channelCount;
     currentPeer -> state = ENET_PEER_STATE_CONNECTING;
     currentPeer -> address = * address;
-    currentPeer -> connectID = ++ host -> randomSeed;
+    currentPeer -> connectID = enet_host_random (host);
 
     if (host -> outgoingBandwidth == 0)
       currentPeer -> windowSize = ENET_PROTOCOL_MAXIMUM_WINDOW_SIZE;
@@ -330,8 +339,8 @@ enet_host_bandwidth_throttle (ENetHost * host)
     enet_uint32 timeCurrent = enet_time_get (),
            elapsedTime = timeCurrent - host -> bandwidthThrottleEpoch,
            peersRemaining = (enet_uint32) host -> connectedPeers,
-		   dataTotal = (enet_uint32)~0,
-		   bandwidth = (enet_uint32)~0,
+           dataTotal = ~0,
+           bandwidth = ~0,
            throttle = 0,
            bandwidthLimit = 0;
     int needsAdjustment = host -> bandwidthLimitedPeers > 0 ? 1 : 0;

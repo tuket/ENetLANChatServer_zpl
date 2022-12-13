@@ -1,27 +1,317 @@
-/** 
- @file  enet.h
- @brief ENet public header file
-*/
-#ifndef __ENET_ENET_H__
-#define __ENET_ENET_H__
+#pragma once
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#include <stdlib.h>
+typedef uint8_t enet_uint8;       /**< unsigned 8-bit type  */
+typedef uint16_t enet_uint16;     /**< unsigned 16-bit type */
+typedef uint32_t enet_uint32;      /**< unsigned 32-bit type */
+
+#define ENET_API extern
 
 #ifdef _WIN32
-#include "enet/win32.h"
+    typedef uintptr_t ENetSocket;
+    #define ENET_SOCKET_NULL (ENetSocket)(~0)
+    #define ENET_CALLBACK __cdecl
 #else
-#include "enet/unix.h"
+    typedef int ENetSocket;
+    #define ENET_SOCKET_NULL -1
+    #define ENET_CALLBACK
 #endif
 
-#include "enet/types.h"
-#include "enet/protocol.h"
-#include "enet/list.h"
-#include "enet/callbacks.h"
+#ifndef ENET_FD_SETSIZE
+    #define ENET_FD_SETSIZE 64
+#endif
+
+typedef struct ENetSocketSet {
+    unsigned fd_count;
+    ENetSocket fd_array[ENET_FD_SETSIZE];
+} ENetSocketSet;
+
+typedef struct
+{
+    size_t dataLength;
+    void * data;
+} ENetBuffer;
+
+enum
+{
+   ENET_PROTOCOL_MINIMUM_MTU             = 576,
+   ENET_PROTOCOL_MAXIMUM_MTU             = 4096,
+   ENET_PROTOCOL_MAXIMUM_PACKET_COMMANDS = 32,
+   ENET_PROTOCOL_MINIMUM_WINDOW_SIZE     = 4096,
+   ENET_PROTOCOL_MAXIMUM_WINDOW_SIZE     = 65536,
+   ENET_PROTOCOL_MINIMUM_CHANNEL_COUNT   = 1,
+   ENET_PROTOCOL_MAXIMUM_CHANNEL_COUNT   = 255,
+   ENET_PROTOCOL_MAXIMUM_PEER_ID         = 0xFFF,
+   ENET_PROTOCOL_MAXIMUM_FRAGMENT_COUNT  = 1024 * 1024
+};
+
+#define ENET_BUFFER_MAXIMUM (1 + 2 * ENET_PROTOCOL_MAXIMUM_PACKET_COMMANDS)
+
+typedef enum _ENetProtocolCommand
+{
+   ENET_PROTOCOL_COMMAND_NONE               = 0,
+   ENET_PROTOCOL_COMMAND_ACKNOWLEDGE        = 1,
+   ENET_PROTOCOL_COMMAND_CONNECT            = 2,
+   ENET_PROTOCOL_COMMAND_VERIFY_CONNECT     = 3,
+   ENET_PROTOCOL_COMMAND_DISCONNECT         = 4,
+   ENET_PROTOCOL_COMMAND_PING               = 5,
+   ENET_PROTOCOL_COMMAND_SEND_RELIABLE      = 6,
+   ENET_PROTOCOL_COMMAND_SEND_UNRELIABLE    = 7,
+   ENET_PROTOCOL_COMMAND_SEND_FRAGMENT      = 8,
+   ENET_PROTOCOL_COMMAND_SEND_UNSEQUENCED   = 9,
+   ENET_PROTOCOL_COMMAND_BANDWIDTH_LIMIT    = 10,
+   ENET_PROTOCOL_COMMAND_THROTTLE_CONFIGURE = 11,
+   ENET_PROTOCOL_COMMAND_SEND_UNRELIABLE_FRAGMENT = 12,
+   ENET_PROTOCOL_COMMAND_COUNT              = 13,
+
+   ENET_PROTOCOL_COMMAND_MASK               = 0x0F
+} ENetProtocolCommand;
+
+typedef enum _ENetProtocolFlag
+{
+   ENET_PROTOCOL_COMMAND_FLAG_ACKNOWLEDGE = (1 << 7),
+   ENET_PROTOCOL_COMMAND_FLAG_UNSEQUENCED = (1 << 6),
+
+   ENET_PROTOCOL_HEADER_FLAG_COMPRESSED = (1 << 14),
+   ENET_PROTOCOL_HEADER_FLAG_SENT_TIME  = (1 << 15),
+   ENET_PROTOCOL_HEADER_FLAG_MASK       = ENET_PROTOCOL_HEADER_FLAG_COMPRESSED | ENET_PROTOCOL_HEADER_FLAG_SENT_TIME,
+
+   ENET_PROTOCOL_HEADER_SESSION_MASK    = (3 << 12),
+   ENET_PROTOCOL_HEADER_SESSION_SHIFT   = 12
+} ENetProtocolFlag;
+
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#define ENET_PACKED
+#elif defined(__GNUC__) || defined(__clang__)
+#define ENET_PACKED __attribute__ ((packed))
+#else
+#define ENET_PACKED
+#endif
+
+typedef struct _ENetProtocolHeader
+{
+   enet_uint16 peerID;
+   enet_uint16 sentTime;
+} ENET_PACKED ENetProtocolHeader;
+
+typedef struct _ENetProtocolCommandHeader
+{
+   enet_uint8 command;
+   enet_uint8 channelID;
+   enet_uint16 reliableSequenceNumber;
+} ENET_PACKED ENetProtocolCommandHeader;
+
+typedef struct _ENetProtocolAcknowledge
+{
+   ENetProtocolCommandHeader header;
+   enet_uint16 receivedReliableSequenceNumber;
+   enet_uint16 receivedSentTime;
+} ENET_PACKED ENetProtocolAcknowledge;
+
+typedef struct _ENetProtocolConnect
+{
+   ENetProtocolCommandHeader header;
+   enet_uint16 outgoingPeerID;
+   enet_uint8  incomingSessionID;
+   enet_uint8  outgoingSessionID;
+   enet_uint32 mtu;
+   enet_uint32 windowSize;
+   enet_uint32 channelCount;
+   enet_uint32 incomingBandwidth;
+   enet_uint32 outgoingBandwidth;
+   enet_uint32 packetThrottleInterval;
+   enet_uint32 packetThrottleAcceleration;
+   enet_uint32 packetThrottleDeceleration;
+   enet_uint32 connectID;
+   enet_uint32 data;
+} ENET_PACKED ENetProtocolConnect;
+
+typedef struct _ENetProtocolVerifyConnect
+{
+   ENetProtocolCommandHeader header;
+   enet_uint16 outgoingPeerID;
+   enet_uint8  incomingSessionID;
+   enet_uint8  outgoingSessionID;
+   enet_uint32 mtu;
+   enet_uint32 windowSize;
+   enet_uint32 channelCount;
+   enet_uint32 incomingBandwidth;
+   enet_uint32 outgoingBandwidth;
+   enet_uint32 packetThrottleInterval;
+   enet_uint32 packetThrottleAcceleration;
+   enet_uint32 packetThrottleDeceleration;
+   enet_uint32 connectID;
+} ENET_PACKED ENetProtocolVerifyConnect;
+
+typedef struct _ENetProtocolBandwidthLimit
+{
+   ENetProtocolCommandHeader header;
+   enet_uint32 incomingBandwidth;
+   enet_uint32 outgoingBandwidth;
+} ENET_PACKED ENetProtocolBandwidthLimit;
+
+typedef struct _ENetProtocolThrottleConfigure
+{
+   ENetProtocolCommandHeader header;
+   enet_uint32 packetThrottleInterval;
+   enet_uint32 packetThrottleAcceleration;
+   enet_uint32 packetThrottleDeceleration;
+} ENET_PACKED ENetProtocolThrottleConfigure;
+
+typedef struct _ENetProtocolDisconnect
+{
+   ENetProtocolCommandHeader header;
+   enet_uint32 data;
+} ENET_PACKED ENetProtocolDisconnect;
+
+typedef struct _ENetProtocolPing
+{
+   ENetProtocolCommandHeader header;
+} ENET_PACKED ENetProtocolPing;
+
+typedef struct _ENetProtocolSendReliable
+{
+   ENetProtocolCommandHeader header;
+   enet_uint16 dataLength;
+} ENET_PACKED ENetProtocolSendReliable;
+
+typedef struct _ENetProtocolSendUnreliable
+{
+   ENetProtocolCommandHeader header;
+   enet_uint16 unreliableSequenceNumber;
+   enet_uint16 dataLength;
+} ENET_PACKED ENetProtocolSendUnreliable;
+
+typedef struct _ENetProtocolSendUnsequenced
+{
+   ENetProtocolCommandHeader header;
+   enet_uint16 unsequencedGroup;
+   enet_uint16 dataLength;
+} ENET_PACKED ENetProtocolSendUnsequenced;
+
+typedef struct _ENetProtocolSendFragment
+{
+   ENetProtocolCommandHeader header;
+   enet_uint16 startSequenceNumber;
+   enet_uint16 dataLength;
+   enet_uint32 fragmentCount;
+   enet_uint32 fragmentNumber;
+   enet_uint32 totalLength;
+   enet_uint32 fragmentOffset;
+} ENET_PACKED ENetProtocolSendFragment;
+
+typedef union _ENetProtocol
+{
+   ENetProtocolCommandHeader header;
+   ENetProtocolAcknowledge acknowledge;
+   ENetProtocolConnect connect;
+   ENetProtocolVerifyConnect verifyConnect;
+   ENetProtocolDisconnect disconnect;
+   ENetProtocolPing ping;
+   ENetProtocolSendReliable sendReliable;
+   ENetProtocolSendUnreliable sendUnreliable;
+   ENetProtocolSendUnsequenced sendUnsequenced;
+   ENetProtocolSendFragment sendFragment;
+   ENetProtocolBandwidthLimit bandwidthLimit;
+   ENetProtocolThrottleConfigure throttleConfigure;
+} ENET_PACKED ENetProtocol;
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
+
+typedef struct _ENetListNode
+{
+   struct _ENetListNode * next;
+   struct _ENetListNode * previous;
+} ENetListNode;
+
+typedef ENetListNode * ENetListIterator;
+
+typedef struct _ENetList
+{
+   ENetListNode sentinel;
+} ENetList;
+
+extern void enet_list_clear (ENetList *);
+
+extern ENetListIterator enet_list_insert (ENetListIterator, void *);
+extern void * enet_list_remove (ENetListIterator);
+extern ENetListIterator enet_list_move (ENetListIterator, void *, void *);
+
+extern size_t enet_list_size (ENetList *);
+
+#define enet_list_begin(list) ((list) -> sentinel.next)
+#define enet_list_end(list) (& (list) -> sentinel)
+
+#define enet_list_empty(list) (enet_list_begin (list) == enet_list_end (list))
+
+#define enet_list_next(iterator) ((iterator) -> next)
+#define enet_list_previous(iterator) ((iterator) -> previous)
+
+#define enet_list_front(list) ((void *) (list) -> sentinel.next)
+#define enet_list_back(list) ((void *) (list) -> sentinel.previous)
+
+typedef struct _ENetCallbacks
+{
+    void * (ENET_CALLBACK * malloc) (size_t size);
+    void (ENET_CALLBACK * free) (void * memory);
+    void (ENET_CALLBACK * no_memory) (void);
+} ENetCallbacks;
+
+/** @defgroup callbacks ENet internal callbacks
+    @{
+    @ingroup private
+*/
+extern void * enet_malloc (size_t);
+extern void   enet_free (void *);
+
+static inline uint16_t ENET_HOST_TO_NET_16(uint16_t value) {
+    const uint8_t* p = (uint8_t*)&value;
+    return ((uint16_t)p[0] << 8) | (uint16_t)p[1];
+}
+static inline uint32_t ENET_HOST_TO_NET_32(uint32_t value) {
+    const uint8_t* p = (uint8_t*)&value;
+    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
+}
+
+static inline uint16_t ENET_NET_TO_HOST_16(uint16_t value) {
+    return ENET_HOST_TO_NET_16(value);
+}
+static inline uint32_t ENET_NET_TO_HOST_32(uint32_t value) {
+    return ENET_HOST_TO_NET_32(value);
+}
+
+void ENET_SOCKETSET_EMPTY_PTR(ENetSocketSet* socketSet);
+void ENET_SOCKETSET_ADD_PTR(ENetSocketSet* socketSet, ENetSocket socket);
+void ENET_SOCKETSET_CLR_PTR(ENetSocketSet* socketSet, ENetSocket socket);
+int  ENET_SOCKETSET_CHECK_PTR(ENetSocketSet* socketSet, ENetSocket socket);
+#define ENET_SOCKETSET_EMPTY(socketSet) ENET_SOCKETSET_EMPTY_PTR(&socketSet)
+#define ENET_SOCKETSET_ADD(socketSet, socket) ENET_SOCKETSET_ADD_PTR(&socketSet, socket)
+#define ENET_SOCKETSET_REMOVE(socketSet, socket) ENET_SOCKETSET_REMOVE_PTR(&socketSet, socket)
+#define ENET_SOCKETSET_CHECK(socketSet, socket) ENET_SOCKETSET_CHECK_PTR(&socketSet, socket)
+
+#define ENET_MAX(x, y) ((x) > (y) ? (x) : (y))
+#define ENET_MIN(x, y) ((x) < (y) ? (x) : (y))
+#define ENET_DIFFERENCE(x, y) ((x) < (y) ? (y) - (x) : (x) - (y))
+
+
+#define ENET_TIME_OVERFLOW 86400000
+
+#define ENET_TIME_LESS(a, b) ((a) - (b) >= ENET_TIME_OVERFLOW)
+#define ENET_TIME_GREATER(a, b) ((b) - (a) >= ENET_TIME_OVERFLOW)
+#define ENET_TIME_LESS_EQUAL(a, b) (! ENET_TIME_GREATER (a, b))
+#define ENET_TIME_GREATER_EQUAL(a, b) (! ENET_TIME_LESS (a, b))
+
+#define ENET_TIME_DIFFERENCE(a, b) ((a) - (b) >= ENET_TIME_OVERFLOW ? (b) - (a) : (a) - (b))
+
 
 #define ENET_VERSION_MAJOR 1
 #define ENET_VERSION_MINOR 3
@@ -608,6 +898,3 @@ extern size_t enet_protocol_command_size (enet_uint8);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __ENET_ENET_H__ */
-

@@ -1,10 +1,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#ifdef USE_ENET_ZPL
-	#include <enet.h>
-#else
+#if ENET_LIB_CHOICE == ENET_LIB_CHOICE_ORIGINAL
 	#include <enet/enet.h>
+#else
+	#include <enet.h>
 #endif
 #include "common.h"
 #include "rlutil.h"
@@ -191,7 +191,7 @@ int find_servers(ServerInfo *server_infos, ENetAddress *addrs, int max_servers, 
 		return 0;
 	}
 	ENetAddress scanaddr;
-#ifdef USE_ENET_ZPL
+#if ENET_LIB_CHOICE == ENET_LIB_CHOICE_ZPL
 	scanaddr.host = enet_v4_anyaddr;
 #else
 	scanaddr.host = ENET_HOST_BROADCAST;

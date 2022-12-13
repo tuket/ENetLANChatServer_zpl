@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <signal.h>
 
-#ifdef USE_ENET_ZPL
-	#include <enet.h>
-#else
+#if ENET_LIB_CHOICE == ENET_LIB_CHOICE_ORIGINAL
 	#include <enet/enet.h>
+#else
+	#include <enet.h>
 #endif
 #include "common.h"
 
