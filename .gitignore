@@ -64,3 +64,6 @@ Win32/
 *.sln
 *.ilk
 *.pdb
+
+build/
+build_zpl/

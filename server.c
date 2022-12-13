@@ -2,7 +2,11 @@
 #include <stdio.h>
 #include <signal.h>
 
-#include <enet/enet.h>
+#ifdef USE_ENET_ZPL
+	#include <enet.h>
+#else
+	#include <enet/enet.h>
+#endif
 #include "common.h"
 
 

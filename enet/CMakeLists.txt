@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.0)
 if("${CMAKE_VERSION}" VERSION_GREATER 3.1)
 	cmake_policy(SET CMP0054 NEW)
 endif()
@@ -36,25 +36,24 @@ if(HAS_SOCKLEN_T)
     add_definitions(-DHAS_SOCKLEN_T=1)
 endif()
  
-include_directories(${PROJECT_SOURCE_DIR}/include)
- 
 add_library(enet STATIC
-        callbacks.c
-        compress.c
-        host.c
-        list.c
-        packet.c
-        peer.c
-        protocol.c
-        unix.c
-        win32.c
-		include/enet/callbacks.h
-		include/enet/enet.h
-		include/enet/list.h
-		include/enet/protocol.h
-		include/enet/time.h
-		include/enet/types.h
-		include/enet/unix.h
-		include/enet/utility.h
-		include/enet/win32.h
-    )
+    callbacks.c
+    compress.c
+    host.c
+    list.c
+    packet.c
+    peer.c
+    protocol.c
+    unix.c
+    win32.c
+	include/enet/callbacks.h
+	include/enet/enet.h
+	include/enet/list.h
+	include/enet/protocol.h
+	include/enet/time.h
+	include/enet/types.h
+	include/enet/unix.h
+	include/enet/utility.h
+	include/enet/win32.h
+)
+target_include_directories(enet PUBLIC ${PROJECT_SOURCE_DIR}/include)

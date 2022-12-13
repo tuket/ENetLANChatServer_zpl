@@ -1,7 +1,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include <enet/enet.h>
+#ifdef USE_ENET_ZPL
+	#include <enet.h>
+#else
+	#include <enet/enet.h>
+#endif
 #include "common.h"
 #include "rlutil.h"
 
@@ -187,7 +191,11 @@ int find_servers(ServerInfo *server_infos, ENetAddress *addrs, int max_servers, 
 		return 0;
 	}
 	ENetAddress scanaddr;
+#ifdef USE_ENET_ZPL
+	scanaddr.host = enet_v4_anyaddr;
+#else
 	scanaddr.host = ENET_HOST_BROADCAST;
+#endif
 	scanaddr.port = LISTEN_PORT;
 	// Send a dummy payload
 	char data = 42;
